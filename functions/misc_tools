@@ -1,0 +1,6 @@
+#!/bin/bash 
+
+get_ext_ip () {
+
+	echo $(curl -s "http://myexternalip.com/raw")
+}
