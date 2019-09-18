@@ -2,5 +2,44 @@
 
 get_ext_ip () {
 
-	echo $(curl -s "http://myexternalip.com/raw")
+    printf "%s\n" "$(curl -s "http://myexternalip.com/raw")"
+    
+    return 0
 }
+
+get_ast_log (){
+    echo "
+    ## TODO 
+    ## Receive search string and locate it
+    ## in /var/log/asterisk/*
+    "
+}
+
+autocomplete () {
+    unset autocomplete
+    printf "%s\n" "$(declare -F | cut -d' ' -f 3 | tr '\n' ' ')"
+    return 0
+}
+
+####
+##
+## Add the functions above this line 
+##
+############################################################
+read -r -a FUNCTION_LIST <<< $(declare -F | cut -d' ' -f 3)
+if [[ "$(basename  -- "$0" )" == 'misc_tools' ]]; then
+    if [ -z "$1" ];then
+        echo -e "\nSelect one function to call: \n"
+        for function in ${FUNCTION_LIST[@]}; do 
+            echo -e "\t# $function"
+        done
+        echo 
+        exit 1
+    else
+        for function in ${FUNCTION_LIST[@]}; do 
+            if [[ "$1" == "$function" ]]; then $function ; exit $?; fi 
+        done
+    
+    fi
+
+fi
