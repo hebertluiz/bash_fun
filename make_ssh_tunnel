@@ -9,35 +9,35 @@ local_address='localhost'
 srv_address=$1
 remote_address=$2
 ssh_port=$4
-random_port="$(echo $(($RANDOM % 900 + 8000)))"
+random_port="$((RANDOM % 900 + 8000))"
 
 
 
-remote_port=$(echo $remote_address |cut -d ':' -f 2)
-if ! echo $2 |grep ':' > /dev/null ; then
+remote_port=$(echo "$remote_address" |cut -d ':' -f 2)
+if ! echo "$2" |grep ':' &> /dev/null ; then
     remote_port='80'
 else
-    remote_port=$(echo $remote_address |cut -d ':' -f 2)
+    remote_port=$(echo "$remote_address" |cut -d ':' -f 2)
     secure='s'
 fi
 
 echo
-echo "This tunel will be configured at http$secure://$local_address:$random_port"
+printf "This tunel will be configured at http%s://%s:%s"  "$secure" "$remote_address" "$random_port"
 echo 
 
-remote_address=$(echo $remote_address |cut -d ':' -f 1)
+remote_address=$(echo "$remote_address" |cut -d ':' -f 1)
 
 
     if [ "$3" == "-p" ]; then
-        if valid_ip $srv_address; then 
-            ssh $srv_address -p $ssh_port -L $local_address:$random_port:$remote_address:$remote_port
+        if valid_ip "$srv_address" ; then 
+            ssh "$srv_address" -p "$ssh_port" -L "$local_address":"$random_port":"$remote_address":"$remote_port"
         else
             echo "Invalid ip address."
             exit 1
         fi
     else 
-        if valid_ip $CLIENTE; then 
-            ssh $srv_address -p 22-L $local_address:$random_port:$remote_address:$remote_port
+        if valid_ip "$CLIENTE" ; then 
+            ssh "$srv_address" -p 22 -L "$local_address":"$random_port":"$remote_address":"$remote_port"
         else
             echo "Invalid ip address."
             exit 1
@@ -46,6 +46,6 @@ remote_address=$(echo $remote_address |cut -d ':' -f 1)
 
 
 echo 
-echo "Tunel fechado"
+echo "Tunnel Closed"
 exit 0
 

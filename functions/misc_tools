@@ -1,5 +1,7 @@
 #!/bin/bash 
 
+
+
 get_ext_ip () {
 
     printf "%s\\n" "$(curl -s "http://myexternalip.com/raw")"
@@ -7,11 +9,24 @@ get_ext_ip () {
 }
 
 get_ast_log (){
-    echo "
+    
+    local ast_log_conf=/etc/asterisk/logger.conf
+    local search_string="$*"
+    
     ## TODO 
     ## Receive search string and locate it
     ## in /var/log/asterisk/*
-    "
+    if grep ^full $ast_log_conf &> /dev/null; then 
+     
+        grep "$search_string"  /var/log/asterisk/full --color -n
+        
+    else
+
+        grep "$search_string"  /var/log/asterisk/messages --color -n
+
+    fi
+
+    
 }
 
 autocomplete () {
@@ -25,17 +40,17 @@ autocomplete () {
 ## Add the functions above this line 
 ##
 ############################################################
-read -r -a FUNCTION_LIST <<< "$(declare -F | cut -d' ' -f 3)"
+read -r -a function_list <<< "$(declare -F | cut -d' ' -f 3)"
 if [[ "$(basename  -- "$0" )" == 'misc_tools' ]]; then
     if [ -z "$1" ];then
         printf "\\nSelect one function to call: \\n"
-        for function in "${FUNCTION_LIST[@]}"; do 
+        for function in "${function_list[@]}"; do 
             printf "\\t# %s\\n" "$function"
         done
         echo 
         exit 1
     else
-        for function in "${FUNCTION_LIST[@]}"; do 
+        for function in "${function_list[@]}"; do 
             if [[ "$1" == "$function" ]]; then $function ; exit $?; fi 
         done
     
