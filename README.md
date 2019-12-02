@@ -7,10 +7,10 @@ Clone in your home and make simbolic links or aliases to scripts
 
 ```bash
 # Clone 
-git clone https://github.com/hebertluiz/bash_functions_and_helpers.git
+git clone https://github.com/hebertluiz/bash_fun.git
 
 # Alias (name as you like it)
-ln -s ~/bash_functions_and_helpers/functions/valid_ip /usr/local/bin/check_valid_ip
+ln -s ~/bash_fun/functions/valid_ip /usr/local/bin/check_valid_ip
 ```
 
 ## Usage
@@ -18,11 +18,11 @@ ln -s ~/bash_functions_and_helpers/functions/valid_ip /usr/local/bin/check_valid
 Importing file in a script.
 ```bash
 #!/bin/bash 
-source ~/bash_functions_and_helpers/functions/valid_ip
+source ~/bash_fun/functions/valid_ip
 ```
 Running from CLI
 ```bash
-~/bash_functions_and_helpers/make_ssh_tunnel 
+~/bash_fun/make_ssh_tunnel 
 ```
 
 ## Contributing
