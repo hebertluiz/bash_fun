@@ -1,4 +1,4 @@
-# bash_functions_and_helpers
+# bash_fun // functions and helpers
 Collections of scripts, tools, and functions to help a sysadmin job.
 
 ## Installation
