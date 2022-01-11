@@ -1,33 +1,74 @@
 #!/bin/bash 
 
 
+## HEREDOC TOOLS 
+#
+heredoc_file () {
+    ## Output a HEREDOC for the provided file
+    if [ ! -r "$1" ]; then
+        printf 'File Not Found: %s' "$1"
+        return 1
+    fi
 
+    printf "## HEREDOC for File: %s ----------\n" "$1"
+    printf 'cat << EOF\n'
+    cat "$1" 
+    printf '\nEOF\n'
+    
+    return 0
+
+}
+
+heredoc_stream () {
+    ## Output a HEREDOC for the provided stream
+    if [ -z "$*" ]; 
+    then 
+        printf 'No Stream provided or Stream is Empty.' 
+        return 0
+    fi
+        printf 'cat << EOF\n'
+        printf '%s\n' "$*"
+        printf '\nEOF\n'
+    return 0
+}
+
+
+## Network Tools
+# 
 get_ext_ip () {
 
     printf "%s\\n" "$(curl -s "http://myexternalip.com/raw")"
     return 0
 }
 
+## VoIP Tools
+#
 get_ast_log (){
     
     local ast_log_conf=/etc/asterisk/logger.conf
     local search_string="$*"
     
-    ## TODO 
-    ## Receive search string and locate it
-    ## in /var/log/asterisk/*
-    if grep ^full $ast_log_conf &> /dev/null; then 
-     
-        grep "$search_string"  /var/log/asterisk/full --color -n
-        
-    else
-
-        grep "$search_string"  /var/log/asterisk/messages --color -n
-
-    fi
-
     
+    ## TODO Prevent running grep in huge files 
+    ## in /var/log/asterisk/*
+
+    if grep -q ^full $ast_log_conf ; then 
+        grep "$search_string"  /var/log/asterisk/full --color -n
+    else
+        grep "$search_string"  /var/log/asterisk/messages --color -n
+    fi
+    return 0    
 }
+
+
+get_ast_verbose_code () {
+    # $1 search string 
+    # $2 num of lines to search
+    verbose_code="$(get_ast_log $1 $2 | grep -P "VERBOSE\[\d+\]\[C-\d+\]" | cut -d \[ -f 4 |cut -d \] -f 1 | uniq)"
+    get_ast_log "$verbose_code" 
+    return 0
+}
+
 
 autocomplete () {
     unset autocomplete
