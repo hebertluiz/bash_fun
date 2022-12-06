@@ -1,7 +1,13 @@
-#!/bin/bash 
+#!/bin/bash
 
 
-## HEREDOC TOOLS 
+### GLOBALS
+#
+export MAX_LOG_SIZE=${MAX_LOG_SIZE:-50000}
+export MAX_LOG_LINES=${MAX_LOG_LINES:-500000}
+
+
+## HEREDOC TOOLS
 #
 heredoc_file () {
     ## Output a HEREDOC for the provided file
@@ -12,18 +18,18 @@ heredoc_file () {
 
     printf "## HEREDOC for File: %s ----------\n" "$1"
     printf 'cat << EOF\n'
-    cat "$1" 
+    cat "$1"
     printf '\nEOF\n'
-    
+
     return 0
 
 }
 
 heredoc_stream () {
     ## Output a HEREDOC for the provided stream
-    if [ -z "$*" ]; 
-    then 
-        printf 'No Stream provided or Stream is Empty.' 
+    if [ -z "$*" ];
+    then
+        printf 'No Stream provided or Stream is Empty.'
         return 0
     fi
         printf 'cat << EOF\n'
@@ -34,7 +40,7 @@ heredoc_stream () {
 
 
 ## Network Tools
-# 
+#
 get_ext_ip () {
 
     printf "%s\\n" "$(curl -s "http://myexternalip.com/raw")"
@@ -44,28 +50,54 @@ get_ext_ip () {
 ## VoIP Tools
 #
 get_ast_log (){
-    
-    local ast_log_conf=/etc/asterisk/logger.conf
-    local search_string="$*"
-    
-    
-    ## TODO Prevent running grep in huge files 
-    ## in /var/log/asterisk/*
 
-    if grep -q ^full $ast_log_conf ; then 
-        grep "$search_string"  /var/log/asterisk/full --color -n
-    else
-        grep "$search_string"  /var/log/asterisk/messages --color -n
+    local ast_log_conf=/etc/asterisk/logger.conf
+    local search_string="$1"
+    MAX_LOG_LINES=$2
+    local log_file=''
+    local log_file_size=0
+
+    if grep -q ^full "${ast_log_conf}" ; then
+        log_file='/var/log/asterisk/full'
+    elif grep -q ^messages "${ast_log_conf}"
+        log_file='/var/log/asterisk/messages'
     fi
-    return 0    
+
+    if ! [ -r "${log_file}" ]; then
+        return 1
+    fi
+
+    log_file_size="$(du ${log_file}  -L |awk '{ print $1 }')"
+
+    if [ ${log_file_size} -eq 0 ]; then
+        return 2 # Empty file
+    fi
+
+    ## Run grep if file is smaller then ${MAX_LOG_SIZE} in bytes
+    if [ ${log_file_size} -lt ${MAX_LOG_SIZE} ]; then
+        grep "${search_string}"  "${log_file}" --color -n
+        return 0
+    fi
+
+    ## Run tail if file is too long
+    tail -n ${MAX_LOG_LINES} ${log_file} | grep "${search_string}" --color -n
+
+    return 0
 }
 
 
 get_ast_verbose_code () {
-    # $1 search string 
+    # $1 search string
     # $2 num of lines to search
-    verbose_code="$(get_ast_log $1 $2 | grep -P "VERBOSE\[\d+\]\[C-\d+\]" | cut -d \[ -f 4 |cut -d \] -f 1 | uniq)"
-    get_ast_log "$verbose_code" 
+    verbose_code="$( get_ast_log $1 $2  \
+        | grep -P "VERBOSE\[\d+\]\[C-\d+\]" \
+        | cut -d \[ -f 4 \
+        |cut -d \] -f 1 \
+        | uniq 
+    )"
+
+    get_ast_log "$verbose_code"
+
     return 0
 }
 
@@ -78,23 +110,23 @@ autocomplete () {
 
 ####
 ##
-## Add the functions above this line 
+## Add the functions above this line
 ##
 ############################################################
 read -r -a function_list <<< "$(declare -F | cut -d' ' -f 3)"
 if [[ "$(basename  -- "$0" )" == 'misc_tools' ]]; then
     if [ -z "$1" ];then
         printf "\\nSelect one function to call: \\n"
-        for function in "${function_list[@]}"; do 
+        for function in "${function_list[@]}"; do
             printf "\\t# %s\\n" "$function"
         done
-        echo 
+        echo
         exit 1
     else
-        for function in "${function_list[@]}"; do 
-            if [[ "$1" == "$function" ]]; then $function ; exit $?; fi 
+        for function in "${function_list[@]}"; do
+            if [[ "$1" == "$function" ]]; then $function ; exit $?; fi
         done
-    
+
     fi
 
 fi

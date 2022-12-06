@@ -1,5 +1,6 @@
 #!/bin/bash
 
+USAGE='
 # Test an IP address for validity:
 # Usage:
 #      valid_ip IP_ADDRESS
@@ -7,8 +8,10 @@
 #   OR
 #      if valid_ip IP_ADDRESS; then echo good; else echo bad; fi
 #
-# Author: from Mitch Frazier from https://www.linuxjournal.com/content/validating-ip-address-bash-script
+# Author: Mitch Frazier from
+#   https://www.linuxjournal.com/content/validating-ip-address-bash-script
 #
+'
 
 function valid_ip()
 {
@@ -29,10 +32,20 @@ function valid_ip()
 # If run directly, execute some tests.
 if [[ "$(basename  -- "$0" )" == 'valid_ip' ]]; then
     if [ ! -z "$1" ]; then
-        if valid_ip "$1"; then stat='good'; ret=0; else stat='bad'; ret=1; fi
-        printf "%-20s: %s\\n" "$1" "$stat"
-        exit $ret        
+
+        if valid_ip "$1"; then
+            stat='good'
+            ret=0
+        else
+            stat='bad'
+            ret=1
+        fi
+
+        if ! [ "$2" = '-q' ]; then printf "%-20s: %s\\n" "$1" "$stat"; fi
+
+        exit $ret
     else
+        printf '\n%s\n' "${USAGE}"
         ips='
             4.2.2.2
             a.b.c.d
