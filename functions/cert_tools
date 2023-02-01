@@ -1,0 +1,67 @@
+#!/bin/bash
+
+## Toolkit for certificate Operations using OpenSSL
+#+ Author: Hebert Silva @hebertluiz
+#@ Date: 01/02/2023
+
+### Globals
+#
+DEFAULT_PORT=443
+
+OPENSSL_X509_FLAGS=(
+    '-noout'
+    '-email'
+    '-subject'
+    '-dates'
+    '-fingerprint'
+)
+declare -A VALID_COMMANDS
+
+VALID_COMMANDS[connect]='ssl_connect_to'
+
+#    'inspect'
+#    'read'
+
+
+### Functions
+#
+
+###############################################################################
+# Connect to a Remote address and show its certificate data
+# Arguments:
+#   $1  Destination Server for connection
+#   $2  Destination Port for connection
+# Outputs:
+#   STDOUT
+###############################################################################
+function ssl_connect_to () {
+    openssl s_client -connect $1:${2:-${DEFAULT_PORT}} \
+        | openssl x509 "${OPENSSL_X509_FLAGS[@]}" 
+}
+
+### Main Function
+#
+function main () {
+
+    ### Help Section
+    if [ "$1" = '-h' ] || [ "$1" = "--help" ]; then
+        desc=$(grep '^#[#+@] ' $0 | sed -e 's/#[#+@] //g' )
+        printf "%s\n\n" "${desc}" >&2
+	  ### Add Extra help messages Here
+        exit 0
+    fi
+    
+    if [ -z "${VALID_COMMANDS[$1]}" ]; then
+        printf 'Invalid command %s.\n\n' "$1"
+        exit 1
+    fi
+    
+    ${VALID_COMMANDS[$1]} "$2" "$3" "$4"
+    
+    return 0
+}
+
+### Execution Section
+#
+main "$@"
+
