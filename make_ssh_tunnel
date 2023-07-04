@@ -1,51 +1,136 @@
 #!/bin/bash 
 
+## Helper to create a SSH connection and a Local/Remote Forwarding
+#@ Autor: @hebertluiz<Hebert L Silva>
+
 source ./functions/valid_ip
 
-# Fill in your information from the machine you are running the script
-# if its not localhost
-local_address='localhost' 
+### Local Address
+local_address="${FOWARD_HOST:=localhost}" 
 
-srv_address=$1
-remote_address=$2
-ssh_port=$4
-random_port="$((RANDOM % 900 + 8000))"
+: "${MAKE_SSH_TUNEL_BASEPORT:=8000}"
 
-
-
-remote_port=$(echo "$remote_address" |cut -d ':' -f 2)
-if ! echo "$2" |grep ':' &> /dev/null ; then
-    remote_port='80'
-else
-    remote_port=$(echo "$remote_address" |cut -d ':' -f 2)
-    secure='s'
-fi
-
-echo
-printf "This tunel will be configured at http%s://%s:%s"  "$secure" "$remote_address" "$random_port"
-echo 
-
-remote_address=$(echo "$remote_address" |cut -d ':' -f 1)
+function get_random_port () {
+    echo "$((RANDOM % 900 + MAKE_SSH_TUNEL_BASEPORT))"
+}
 
 
-    if [ "$3" == "-p" ]; then
-        if valid_ip "$srv_address" ; then 
-            ssh "$srv_address" -p "$ssh_port" -L "$local_address":"$random_port":"$remote_address":"$remote_port"
-        else
-            echo "Invalid ip address."
-            exit 1
-        fi
-    else 
-        if valid_ip "$CLIENTE" ; then 
-            ssh "$srv_address" -p 22 -L "$local_address":"$random_port":"$remote_address":"$remote_port"
-        else
-            echo "Invalid ip address."
-            exit 1
+function gen_random_port () {
+    printf -- 'Generating random port...\n' >&2
+    random_port=$(get_random_port)
+    while RET=$(lsof -i:$random_port); do
+        printf -- '!!! Port %5d is already in use by:\n' $random_port >&2
+        printf -- '\n%s\n\n' "${RET}" >&2
+        random_port=$(get_random_port)
+        printf -- 'Trying port %5d...\n' $random_port >&2
+        sleep .5
+    done
+    printf -- '%s\n' ${random_port} >&2
+    return 0
+}
+
+function get_service_proto () {
+    if [ -r "/etc/services" ]; then
+        RET="$(
+            grep "$1/tcp" /etc/services \
+                | awk '{print $1}'
+        )"
+    fi
+
+    if [ -n "$RET" ]; then 
+        printf -- '%s' "$RET"
+        return 0
+    fi
+
+    return 1
+}
+
+function setup_args () {
+    srv_address=${1%%:*}
+    remote_address=${2%%:*}
+    remote_port=${2##*:}
+    ssh_port=${1##*:}
+
+    if [ -n "${ssh_port}" ]; then
+        ssh_port=" -p${ssh_port}"
+    fi
+}
+
+function build_remote_proto () {
+    case "${remote_port}" in
+        80)
+            REMOTE_PROTO='http://'
+        ;;
+        443)
+            REMOTE_PROTO='https://'
+        ;;
+        *)
+            if ! REMOTE_PROTO=$(get_service_proto ${remote_port}); then
+                printf '!!! No valid proto for port %5d\n' ${remote_port} >&2 
+                unset REMOTE_PROTO
+            fi
+        ;;
+    esac
+}
+
+## Get Local IPv4 Addresses
+function get_local_addresses () {
+    printf 'List of local IPv4 Addresses\n'
+    printf 'Interface        State          IPv4 Address\n'
+    ip -br -4 a |grep -v ^lo
+    printf '\n'
+}
+
+## Generate a ssh command with a Local Foward
+# Uses the folloing variables to build a tunnel COMMAND
+# srv_address
+# remote_address
+# remote_port
+# ssh_port
+function build_ssh_cmd () {
+
+
+    build_remote_proto 
+    gen_random_port
+    
+    echo '# -----------------------------------------' >&2
+    printf 'This tunel will be configured at %s%s:%s\n' \
+        "$REMOTE_PROTO" "$local_address" "$random_port" >&2
+    printf 'Destination: %s%s:%s\n' \
+        "$REMOTE_PROTO" "$remote_address" "$remote_port" >&2
+    echo '# -----------------------------------------' >&2
+    get_local_addresses >&2
+    COMMAND="ssh "$srv_address" ${ssh_port} "
+    COMMAND+="-L $local_address:$random_port:$remote_address:$remote_port"
+}
+
+
+function main () {
+
+    setup_args "$@"
+
+    if ! valid_ip "$srv_address" ; then
+        printf -- 'WARNING:: %s is not a IP address.\n\n' "$srv_address" >&2
+        read -p 'Proceed? [y/N]: '
+        if [ "${REPLY,,}" != 'y' ]; then
+            return 1
         fi
     fi
 
+    build_ssh_cmd
+    if [ -z "${COMMAND}" ]; then
+        printf -- 'Error building SSH command\n\n' >&2
+        return 1
+    fi
 
-echo 
-echo "Tunnel Closed"
-exit 0
+    ${COMMAND}
+    printf -- '\nTunnel Closed with return %d\n\n' $? >&2
+    return 0
+
+}
+
+if [ "$(basename -- $0)" = 'make_ssh_tunnel' ]; then
+    main "$@"
+    exit $?
+fi
 
